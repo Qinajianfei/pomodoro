@@ -6,178 +6,238 @@
 <title>番茄钟 · Pomodoro</title>
 <style>
   :root {
-    --bg: #1a1a2e;
-    --card: #16213e;
-    --accent: #e94560;
-    --accent2: #0f3460;
-    --text: #eee;
-    --muted: #999;
-    --green: #2ecc71;
-    --blue: #3498db;
-    --ring-bg: #2a2a4a;
+    --bg: #0f0f14;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.06);
+    --text: #e8e8ed;
+    --text-secondary: #8888a0;
+    --accent: #ff6b6b;
+    --accent-glow: rgba(255,107,107,0.35);
+    --accent2: #ff8e8e;
+    --green: #4ecdc4;
+    --green-glow: rgba(78,205,196,0.35);
+    --ring-track: rgba(255,255,255,0.08);
+    --radius: 16px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
     background: var(--bg);
     color: var(--text);
     display: flex; justify-content: center; align-items: center;
     min-height: 100vh; user-select: none; -webkit-user-select: none;
     overflow: hidden;
   }
-  /* 背景装饰 */
-  body::before {
-    content: ''; position: fixed; top: -50%; left: -50%;
-    width: 200%; height: 200%;
-    background: radial-gradient(circle at 30% 20%, rgba(233,69,96,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 70% 80%, rgba(52,152,219,0.06) 0%, transparent 50%);
-    pointer-events: none; z-index: 0;
-  }
+
+  /* 动态背景光晕 */
+  .bg-orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.5; }
+  .bg-orb.a { width: 500px; height: 500px; background: #ff6b6b; top: -15%; left: -10%; animation: orbA 12s ease-in-out infinite; }
+  .bg-orb.b { width: 400px; height: 400px; background: #4ecdc4; bottom: -12%; right: -8%; animation: orbB 14s ease-in-out infinite; }
+  .bg-orb.c { width: 300px; height: 300px; background: #a78bfa; top: 50%; left: 50%; animation: orbC 16s ease-in-out infinite; }
+  @keyframes orbA { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(80px,60px) scale(1.15); } 66% { transform: translate(-30px,-40px) scale(0.9); } }
+  @keyframes orbB { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-60px,-40px) scale(1.1); } 66% { transform: translate(40px,30px) scale(0.85); } }
+  @keyframes orbC { 0%,100% { transform: translate(0,0) scale(0.6); } 50% { transform: translate(-50px,30px) scale(1); } }
+
+  /* 主容器 */
   .container {
     position: relative; z-index: 1;
-    display: flex; flex-direction: column; align-items: center; gap: 32px;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
   }
 
-  /* 模式切换 */
+  /* ---- 模式切换 ---- */
   .modes {
-    display: flex; gap: 6px;
-    background: var(--card); border-radius: 40px; padding: 5px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    display: flex; gap: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 44px; padding: 4px;
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   }
   .mode-btn {
-    padding: 10px 24px; border-radius: 35px; border: none;
-    background: transparent; color: var(--muted);
-    font-size: 15px; cursor: pointer; transition: all 0.3s;
-    font-weight: 500; white-space: nowrap;
+    padding: 10px 22px; border-radius: 40px; border: none;
+    background: transparent; color: var(--text-secondary);
+    font-size: 14px; cursor: pointer; transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+    font-weight: 500; white-space: nowrap; position: relative;
   }
   .mode-btn.active {
-    background: var(--accent); color: #fff;
-    box-shadow: 0 4px 15px rgba(233,69,96,0.4);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
   }
-  .mode-btn:hover:not(.active) { color: #fff; }
+  .mode-btn:hover:not(.active) { color: #fff; background: var(--surface-hover); }
 
-  /* 环形进度 */
+  /* ---- 环形进度 ---- */
   .ring-wrap {
-    position: relative; width: 320px; height: 320px;
+    position: relative; width: 300px; height: 300px;
     display: flex; align-items: center; justify-content: center;
   }
-  .ring-wrap svg {
-    position: absolute; width: 100%; height: 100%;
-    transform: rotate(-90deg);
-  }
-  .ring-bg {
-    fill: none; stroke: var(--ring-bg); stroke-width: 8;
+  .ring-wrap svg { position: absolute; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track {
+    fill: none; stroke: var(--ring-track); stroke-width: 6;
   }
   .ring-progress {
-    fill: none; stroke: var(--accent); stroke-width: 8;
+    fill: none; stroke: var(--accent); stroke-width: 6;
     stroke-linecap: round;
-    transition: stroke-dashoffset 0.5s linear, stroke 0.4s;
+    filter: drop-shadow(0 0 10px var(--accent-glow));
+    transition: stroke-dashoffset 0.4s linear, stroke 0.4s, filter 0.4s;
   }
-  .ring-progress.break { stroke: var(--green); }
-  .timer-display {
-    z-index: 2; text-align: center;
+  .ring-progress.break {
+    stroke: var(--green);
+    filter: drop-shadow(0 0 10px var(--green-glow));
   }
+
+  /* 内部刻度标记 */
+  .tick-marks line {
+    stroke: rgba(255,255,255,0.06); stroke-width: 2;
+    transition: stroke 0.4s;
+  }
+  .tick-marks.highlight line { stroke: rgba(255,255,255,0.12); }
+
+  .timer-display { z-index: 2; text-align: center; }
   .time {
-    font-size: 72px; font-weight: 700; letter-spacing: 2px;
-    font-variant-numeric: tabular-nums; font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
-    line-height: 1;
+    font-size: 68px; font-weight: 600; letter-spacing: 2px;
+    font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+    line-height: 1; color: #fff;
+    font-variant-numeric: tabular-nums;
   }
   .status-label {
-    font-size: 15px; color: var(--muted); margin-top: 8px;
-    letter-spacing: 3px; text-transform: uppercase;
+    font-size: 13px; color: var(--text-secondary); margin-top: 6px;
+    letter-spacing: 4px; text-transform: uppercase; font-weight: 500;
   }
 
-  /* 按钮 */
-  .controls { display: flex; gap: 16px; align-items: center; }
+  /* 环形脉冲（运行中） */
+  .ring-wrap.running .ring-progress {
+    animation: ringPulse 2s ease-in-out infinite;
+  }
+  @keyframes ringPulse {
+    0%,100% { filter: drop-shadow(0 0 8px var(--accent-glow)); }
+    50% { filter: drop-shadow(0 0 18px var(--accent-glow)); }
+  }
+  .ring-wrap.running .ring-progress.break {
+    animation: ringPulseGreen 2s ease-in-out infinite;
+  }
+  @keyframes ringPulseGreen {
+    0%,100% { filter: drop-shadow(0 0 8px var(--green-glow)); }
+    50% { filter: drop-shadow(0 0 18px var(--green-glow)); }
+  }
+
+  /* ---- 控制按钮 ---- */
+  .controls { display: flex; gap: 20px; align-items: center; }
   .btn {
-    width: 52px; height: 52px; border-radius: 50%; border: none;
-    cursor: pointer; font-size: 22px; display: flex;
+    border: none; cursor: pointer; display: flex;
     align-items: center; justify-content: center;
-    transition: all 0.25s; color: #fff;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1); color: #fff;
+    border-radius: 50%; position: relative;
   }
   .btn-play {
-    width: 64px; height: 64px; font-size: 26px;
-    background: var(--accent);
-    box-shadow: 0 6px 25px rgba(233,69,96,0.5);
+    width: 68px; height: 68px; font-size: 24px;
+    background: var(--accent); border-radius: 50%;
+    box-shadow: 0 8px 32px var(--accent-glow);
   }
-  .btn-play:hover { transform: scale(1.08); box-shadow: 0 8px 30px rgba(233,69,96,0.6); }
-  .btn-play.paused { background: var(--accent2); box-shadow: 0 6px 20px rgba(15,52,96,0.4); }
+  .btn-play:hover { transform: scale(1.06); box-shadow: 0 12px 40px var(--accent-glow); }
+  .btn-play.paused { background: rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .btn-play.paused:hover { background: rgba(255,255,255,0.15); }
+
   .btn-secondary {
-    background: var(--card); width: 44px; height: 44px; font-size: 18px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    width: 44px; height: 44px; font-size: 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  .btn-secondary:hover { background: #1f3050; transform: scale(1.05); }
-  .btn:active { transform: scale(0.95) !important; }
+  .btn-secondary:hover { background: var(--surface-hover); border-color: rgba(255,255,255,0.15); transform: scale(1.05); }
+  .btn:active { transform: scale(0.93) !important; }
 
-  /* 统计 */
+  /* ---- 统计卡片 ---- */
   .stats {
-    display: flex; gap: 40px; font-size: 14px; color: var(--muted);
+    display: flex; gap: 12px;
   }
-  .stat-item { text-align: center; }
-  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); }
-  .stat-label { margin-top: 2px; letter-spacing: 1px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 28px; text-align: center;
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    min-width: 110px;
+  }
+  .stat-value { font-size: 26px; font-weight: 700; color: #fff; }
+  .stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
 
-  /* 设置面板 */
-  .settings-toggle {
-    position: fixed; top: 20px; right: 20px; z-index: 10;
-    background: var(--card); border: none; color: var(--muted);
-    width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
-    font-size: 18px; display: flex; align-items: center; justify-content: center;
-    transition: all 0.3s;
+  /* ---- 进度点指示器 ---- */
+  .session-dots { display: flex; gap: 8px; align-items: center; }
+  .session-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    transition: all 0.4s;
   }
-  .settings-toggle:hover { color: #fff; }
+  .session-dot.done { background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+
+  /* ---- 设置面板 ---- */
+  .settings-toggle {
+    position: fixed; top: 24px; right: 24px; z-index: 10;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-secondary); width: 40px; height: 40px;
+    border-radius: 50%; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .settings-toggle:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
   .settings-panel {
-    position: fixed; top: 0; right: -340px; width: 320px; height: 100vh;
-    background: var(--card); z-index: 20; padding: 32px 24px;
-    transition: right 0.35s cubic-bezier(0.4,0,0.2,1);
+    position: fixed; top: 0; right: -360px; width: 300px; height: 100vh;
+    background: rgba(20,20,30,0.95); z-index: 20; padding: 36px 24px;
+    transition: right 0.4s cubic-bezier(0.32,0.72,0,1);
     display: flex; flex-direction: column; gap: 24px;
-    box-shadow: -8px 0 30px rgba(0,0,0,0.5);
+    border-left: 1px solid var(--border);
+    backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
   }
   .settings-panel.open { right: 0; }
   .settings-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 15;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 15;
+    opacity: 0; pointer-events: none; transition: opacity 0.35s;
   }
   .settings-overlay.show { opacity: 1; pointer-events: auto; }
-  .settings-panel h3 { font-size: 18px; font-weight: 600; color: var(--text); }
+  .settings-panel h3 { font-size: 16px; font-weight: 600; color: var(--text); letter-spacing: 1px; }
   .setting-row {
     display: flex; justify-content: space-between; align-items: center;
   }
-  .setting-row label { font-size: 14px; color: var(--muted); }
+  .setting-row label { font-size: 14px; color: var(--text-secondary); }
   .setting-row input {
-    width: 70px; padding: 8px 10px; border-radius: 8px; border: 1px solid #333;
-    background: var(--bg); color: #fff; font-size: 14px; text-align: center;
-    font-family: inherit;
+    width: 64px; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1); background: var(--surface);
+    color: #fff; font-size: 14px; text-align: center; font-family: inherit;
+    transition: border-color 0.3s;
   }
   .setting-row input:focus { outline: none; border-color: var(--accent); }
   .close-settings {
-    position: absolute; top: 16px; right: 16px;
-    background: none; border: none; color: var(--muted);
-    font-size: 24px; cursor: pointer;
+    position: absolute; top: 20px; right: 20px;
+    background: none; border: none; color: var(--text-secondary);
+    font-size: 22px; cursor: pointer;
   }
   .close-settings:hover { color: #fff; }
 
-  @media (max-width: 400px) {
-    .ring-wrap { width: 260px; height: 260px; }
-    .time { font-size: 56px; }
-    .stats { gap: 24px; }
+  @media (max-width: 420px) {
+    .ring-wrap { width: 250px; height: 250px; }
+    .time { font-size: 54px; }
+    .stats { flex-direction: row; gap: 8px; }
+    .stat-card { padding: 10px 20px; min-width: 90px; }
+    .stat-value { font-size: 22px; }
   }
 </style>
 </head>
 <body>
 
+<!-- 动态背景光晕 -->
+<div class="bg-orb a"></div>
+<div class="bg-orb b"></div>
+<div class="bg-orb c"></div>
+
 <div class="container">
   <!-- 模式切换 -->
   <div class="modes">
-    <button class="mode-btn active" data-mode="work">🍅 专注</button>
-    <button class="mode-btn" data-mode="shortBreak">☕ 短休</button>
-    <button class="mode-btn" data-mode="longBreak">🌿 长休</button>
+    <button class="mode-btn active" data-mode="work">专注</button>
+    <button class="mode-btn" data-mode="shortBreak">短休</button>
+    <button class="mode-btn" data-mode="longBreak">长休</button>
   </div>
 
   <!-- 环形进度 -->
-  <div class="ring-wrap">
+  <div class="ring-wrap" id="ringWrap">
     <svg viewBox="0 0 200 200">
-      <circle class="ring-bg" cx="100" cy="100" r="92"/>
+      <circle class="ring-track" cx="100" cy="100" r="92"/>
       <circle class="ring-progress" id="ring" cx="100" cy="100" r="92"
               stroke-dasharray="578.05" stroke-dashoffset="0"/>
     </svg>
@@ -189,30 +249,59 @@
 
   <!-- 控制按钮 -->
   <div class="controls">
-    <button class="btn btn-secondary" id="btnReset" title="重置">↺</button>
-    <button class="btn btn-play" id="btnPlay" title="开始">▶</button>
-    <button class="btn btn-secondary" id="btnSkip" title="跳过">⏭</button>
+    <button class="btn btn-secondary" id="btnReset" title="重置 (R)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+      </svg>
+    </button>
+    <button class="btn btn-play paused" id="btnPlay" title="开始 (Space)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" id="iconPlay">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" id="iconPause" style="display:none">
+        <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+      </svg>
+    </button>
+    <button class="btn btn-secondary" id="btnSkip" title="跳过">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 17 21 12 13 7 13 17"/><polygon points="3 17 11 12 3 7 3 17"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- 进度指示器 -->
+  <div class="session-dots" id="sessionDots">
+    <span class="session-dot done"></span>
+    <span class="session-dot"></span>
+    <span class="session-dot"></span>
+    <span class="session-dot"></span>
   </div>
 
   <!-- 统计 -->
   <div class="stats">
-    <div class="stat-item">
+    <div class="stat-card">
       <div class="stat-value" id="sessionCount">0</div>
       <div class="stat-label">今日专注</div>
     </div>
-    <div class="stat-item">
-      <div class="stat-value" id="totalFocus">0 分钟</div>
+    <div class="stat-card">
+      <div class="stat-value" id="totalFocus">0<small style="font-size:14px;font-weight:400;color:var(--text-secondary)"> 分钟</small></div>
       <div class="stat-label">累计专注</div>
     </div>
   </div>
 </div>
 
 <!-- 设置 -->
-<button class="settings-toggle" id="btnSettings" title="设置">⚙</button>
+<button class="settings-toggle" id="btnSettings" title="设置 (S)">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+</button>
 <div class="settings-overlay" id="overlay"></div>
 <div class="settings-panel" id="settingsPanel">
-  <button class="close-settings" id="btnCloseSettings">✕</button>
-  <h3>⚙ 时间设置（分钟）</h3>
+  <button class="close-settings" id="btnCloseSettings">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <h3>时间设置（分钟）</h3>
   <div class="setting-row">
     <label>专注时长</label>
     <input type="number" id="workDuration" value="25" min="1" max="120">
@@ -232,13 +321,12 @@
 </div>
 
 <script>
-const CIRCUMFERENCE = 2 * Math.PI * 92; // ~578.05
+const CIRCUMFERENCE = 2 * Math.PI * 92;
 
-// 状态
 const state = {
-  mode: 'work',          // work | shortBreak | longBreak
+  mode: 'work',
   running: false,
-  remaining: 25 * 60,    // 秒
+  remaining: 25 * 60,
   total: 25 * 60,
   sessionCount: 0,
   totalFocusMin: 0,
@@ -247,25 +335,21 @@ const state = {
   audioCtx: null,
 };
 
-// 设置
-const settings = {
-  work: 25,
-  shortBreak: 5,
-  longBreak: 15,
-  longBreakInterval: 4,
-};
+const settings = { work: 25, shortBreak: 5, longBreak: 15, longBreakInterval: 4 };
 
 // DOM
 const el = {
   timer: document.getElementById('timer'),
   status: document.getElementById('status'),
   ring: document.getElementById('ring'),
+  ringWrap: document.getElementById('ringWrap'),
   btnPlay: document.getElementById('btnPlay'),
-  btnReset: document.getElementById('btnReset'),
-  btnSkip: document.getElementById('btnSkip'),
+  iconPlay: document.getElementById('iconPlay'),
+  iconPause: document.getElementById('iconPause'),
   sessionCount: document.getElementById('sessionCount'),
   totalFocus: document.getElementById('totalFocus'),
   modeBtns: document.querySelectorAll('.mode-btn'),
+  sessionDots: document.getElementById('sessionDots'),
   settingsPanel: document.getElementById('settingsPanel'),
   overlay: document.getElementById('overlay'),
 };
@@ -275,33 +359,24 @@ function getAudioCtx() {
   if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return state.audioCtx;
 }
-
 function beep(freq, duration, type = 'sine') {
   try {
     const ctx = getAudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
-  } catch (_) { /* 静默忽略 */ }
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + duration);
+  } catch (_) {}
 }
-
 function playAlarm() {
-  // 三段式提示音
-  beep(880, 0.15);
-  setTimeout(() => beep(880, 0.15), 200);
-  setTimeout(() => beep(880, 0.3), 400);
+  beep(880, 0.12);
+  setTimeout(() => beep(880, 0.12), 180);
+  setTimeout(() => beep(1100, 0.35), 360);
 }
-
-function playTick() {
-  beep(600, 0.05, 'square');
-}
+function playTick() { beep(500, 0.04, 'sine'); }
 
 // ---- 通知 ----
 function notify(title, body) {
@@ -326,144 +401,131 @@ function updateRing(immediate = false) {
   if (immediate) {
     el.ring.style.transition = 'none';
     el.ring.style.strokeDashoffset = offset;
-    // 强制回流
     el.ring.getBoundingClientRect();
-    el.ring.style.transition = 'stroke-dashoffset 0.5s linear, stroke 0.4s';
+    el.ring.style.transition = 'stroke-dashoffset 0.4s linear, stroke 0.4s, filter 0.4s';
   } else {
     el.ring.style.strokeDashoffset = offset;
   }
-  el.ring.classList.toggle('break', state.mode !== 'work');
+  const isBreak = state.mode !== 'work';
+  el.ring.classList.toggle('break', isBreak);
+  el.ringWrap.classList.toggle('running', state.running);
 }
 
 function updateDisplay() {
   el.timer.textContent = formatTime(state.remaining);
-  const labels = { work: '专注中…', shortBreak: '短休中…', longBreak: '长休中…' };
+  const labels = { work: '专注中', shortBreak: '短休中', longBreak: '长休中' };
   el.status.textContent = state.running ? labels[state.mode] : '已暂停';
   updateRing();
 }
 
-function switchMode(mode, fromAuto = false) {
-  state.mode = mode;
-  state.running = false;
-  clearInterval(state.intervalId);
-  state.intervalId = null;
+function updateDots() {
+  const dots = el.sessionDots.querySelectorAll('.session-dot');
+  const n = state.workSessionsBeforeLong;
+  dots.forEach((d, i) => d.classList.toggle('done', i < n));
+}
+
+function switchMode(mode) {
+  state.mode = mode; state.running = false;
+  clearInterval(state.intervalId); state.intervalId = null;
 
   const map = { work: settings.work, shortBreak: settings.shortBreak, longBreak: settings.longBreak };
-  state.remaining = map[mode] * 60;
-  state.total = state.remaining;
+  state.remaining = map[mode] * 60; state.total = state.remaining;
 
-  // 更新模式按钮
   el.modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-
-  // 更新播放按钮图标
-  el.btnPlay.textContent = '▶';
+  setPlayIcon(false);
   el.btnPlay.classList.add('paused');
+  el.ringWrap.classList.remove('running');
 
-  updateDisplay();
-  updateRing(true);
+  updateDisplay(); updateRing(true); updateDots();
 }
 
 function tick() {
   if (!state.running) return;
-
   if (state.remaining <= 1) {
-    // 时间到
-    clearInterval(state.intervalId);
-    state.intervalId = null;
-    state.running = false;
-    state.remaining = 0;
-    updateDisplay();
-
+    clearInterval(state.intervalId); state.intervalId = null;
+    state.running = false; state.remaining = 0;
+    updateDisplay(); setPlayIcon(false);
+    el.btnPlay.classList.add('paused');
+    el.ringWrap.classList.remove('running');
     playAlarm();
 
     if (state.mode === 'work') {
-      state.sessionCount++;
-      state.totalFocusMin += settings.work;
+      state.sessionCount++; state.totalFocusMin += settings.work;
       state.workSessionsBeforeLong++;
       el.sessionCount.textContent = state.sessionCount;
-      el.totalFocus.textContent = `${state.totalFocusMin} 分钟`;
-      saveStats();
+      el.totalFocus.innerHTML = `${state.totalFocusMin}<small style="font-size:14px;font-weight:400;color:var(--text-secondary)"> 分钟</small>`;
+      saveStats(); updateDots();
 
-      // 判断下一个模式
       if (state.workSessionsBeforeLong >= settings.longBreakInterval) {
         state.workSessionsBeforeLong = 0;
-        notify('🍅 专注完成！', '该长休了，休息一下吧~');
-        switchMode('longBreak', true);
+        notify('专注完成！', '该长休了，休息一下吧');
+        switchMode('longBreak');
       } else {
-        notify('🍅 专注完成！', '休息一下，喝杯水~');
-        switchMode('shortBreak', true);
+        notify('专注完成！', '休息一下，喝杯水');
+        switchMode('shortBreak');
       }
     } else {
-      // 休息结束
-      notify('⏰ 休息结束', '准备好了吗？开始下一轮专注吧！');
-      switchMode('work', true);
+      notify('休息结束', '准备好了吗？开始下一轮专注吧');
+      switchMode('work');
     }
     return;
   }
-
   state.remaining--;
-  if (state.remaining <= 5 && state.remaining > 0) {
-    playTick();
-  }
+  if (state.remaining <= 5 && state.remaining > 0) playTick();
   updateDisplay();
+}
+
+function setPlayIcon(playing) {
+  el.iconPlay.style.display = playing ? 'none' : 'block';
+  el.iconPause.style.display = playing ? 'block' : 'none';
 }
 
 function togglePlay() {
   if (state.running) {
-    // 暂停
     state.running = false;
-    clearInterval(state.intervalId);
-    state.intervalId = null;
-    el.btnPlay.textContent = '▶';
+    clearInterval(state.intervalId); state.intervalId = null;
+    setPlayIcon(false);
     el.btnPlay.classList.add('paused');
+    el.ringWrap.classList.remove('running');
     el.status.textContent = '已暂停';
   } else {
-    // 开始
-    // 首次使用请求通知权限
     if (Notification.permission === 'default') Notification.requestPermission();
     state.running = true;
     state.intervalId = setInterval(tick, 1000);
-    el.btnPlay.textContent = '⏸';
+    setPlayIcon(true);
     el.btnPlay.classList.remove('paused');
-    const labels = { work: '专注中…', shortBreak: '短休中…', longBreak: '长休中…' };
+    el.ringWrap.classList.add('running');
+    const labels = { work: '专注中', shortBreak: '短休中', longBreak: '长休中' };
     el.status.textContent = labels[state.mode];
   }
 }
 
 function reset() {
   state.running = false;
-  clearInterval(state.intervalId);
-  state.intervalId = null;
+  clearInterval(state.intervalId); state.intervalId = null;
   const map = { work: settings.work, shortBreak: settings.shortBreak, longBreak: settings.longBreak };
-  state.remaining = map[state.mode] * 60;
-  state.total = state.remaining;
-  el.btnPlay.textContent = '▶';
+  state.remaining = map[state.mode] * 60; state.total = state.remaining;
+  setPlayIcon(false);
   el.btnPlay.classList.add('paused');
-  updateDisplay();
-  updateRing(true);
+  el.ringWrap.classList.remove('running');
+  updateDisplay(); updateRing(true);
 }
 
-// ---- 统计持久化 ----
+// ---- 持久化 ----
 function saveStats() {
   const today = new Date().toDateString();
   localStorage.setItem('pomodoro_date', today);
   localStorage.setItem('pomodoro_sessions', state.sessionCount);
   localStorage.setItem('pomodoro_minutes', state.totalFocusMin);
 }
-
 function loadStats() {
   const today = new Date().toDateString();
-  const savedDate = localStorage.getItem('pomodoro_date');
-  if (savedDate === today) {
+  if (localStorage.getItem('pomodoro_date') === today) {
     state.sessionCount = parseInt(localStorage.getItem('pomodoro_sessions')) || 0;
     state.totalFocusMin = parseInt(localStorage.getItem('pomodoro_minutes')) || 0;
-  } else {
-    state.sessionCount = 0;
-    state.totalFocusMin = 0;
-    saveStats();
-  }
+  } else { state.sessionCount = 0; state.totalFocusMin = 0; saveStats(); }
   el.sessionCount.textContent = state.sessionCount;
-  el.totalFocus.textContent = `${state.totalFocusMin} 分钟`;
+  el.totalFocus.innerHTML = `${state.totalFocusMin}<small style="font-size:14px;font-weight:400;color:var(--text-secondary)"> 分钟</small>`;
 }
 
 // ---- 设置 ----
@@ -472,62 +534,38 @@ function openSettings() {
   document.getElementById('shortBreakDuration').value = settings.shortBreak;
   document.getElementById('longBreakDuration').value = settings.longBreak;
   document.getElementById('longBreakInterval').value = settings.longBreakInterval;
-  el.settingsPanel.classList.add('open');
-  el.overlay.classList.add('show');
+  el.settingsPanel.classList.add('open'); el.overlay.classList.add('show');
 }
-
-function closeSettings() {
-  el.settingsPanel.classList.remove('open');
-  el.overlay.classList.remove('show');
-}
-
 function applySettings() {
   settings.work = Math.max(1, parseInt(document.getElementById('workDuration').value) || 25);
   settings.shortBreak = Math.max(1, parseInt(document.getElementById('shortBreakDuration').value) || 5);
   settings.longBreak = Math.max(1, parseInt(document.getElementById('longBreakDuration').value) || 15);
   settings.longBreakInterval = Math.max(2, parseInt(document.getElementById('longBreakInterval').value) || 4);
   localStorage.setItem('pomodoro_settings', JSON.stringify(settings));
-  reset();
-  closeSettings();
+  reset(); el.settingsPanel.classList.remove('open'); el.overlay.classList.remove('show');
 }
-
 function loadSettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('pomodoro_settings'));
-    if (saved) Object.assign(settings, saved);
-  } catch (_) {}
+  try { const saved = JSON.parse(localStorage.getItem('pomodoro_settings')); if (saved) Object.assign(settings, saved); } catch (_) {}
   const map = { work: settings.work, shortBreak: settings.shortBreak, longBreak: settings.longBreak };
-  state.remaining = map[state.mode] * 60;
-  state.total = state.remaining;
+  state.remaining = map[state.mode] * 60; state.total = state.remaining;
 }
 
-// ---- 事件绑定 ----
+// ---- 事件 ----
 el.btnPlay.addEventListener('click', togglePlay);
-el.btnReset.addEventListener('click', reset);
-el.btnSkip.addEventListener('click', () => {
-  state.remaining = 0;
-  tick();
-});
-
+document.getElementById('btnReset').addEventListener('click', reset);
+document.getElementById('btnSkip').addEventListener('click', () => { state.remaining = 0; tick(); });
 el.modeBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     if (state.running && !confirm('切换模式将重置当前计时，确定吗？')) return;
     switchMode(btn.dataset.mode);
   });
 });
-
 document.getElementById('btnSettings').addEventListener('click', openSettings);
 document.getElementById('btnCloseSettings').addEventListener('click', applySettings);
 el.overlay.addEventListener('click', applySettings);
-
-// 设置面板回车键应用
 document.querySelectorAll('.settings-panel input').forEach(input => {
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') applySettings();
-  });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') applySettings(); });
 });
-
-// 键盘快捷键
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
@@ -536,10 +574,8 @@ document.addEventListener('keydown', e => {
 });
 
 // ---- 初始化 ----
-loadSettings();
-loadStats();
-updateDisplay();
-updateRing(true);
+loadSettings(); loadStats();
+updateDisplay(); updateRing(true); updateDots();
 </script>
 </body>
 </html>
