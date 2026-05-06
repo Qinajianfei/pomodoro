@@ -1,0 +1,5 @@
+# Claude Code 本地设置（含 token 等敏感信息）
+.claude/
+
+# 外部克隆的仓库
+andrej-karpathy-skills/
